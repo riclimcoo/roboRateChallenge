@@ -44,69 +44,41 @@ rate = {
     }
 }
 
-oneminute = datetime.timedelta(minutes=1)
-onehour =   datetime.timedelta(hours=1)
-eightHours = datetime.timedelta(hours=8)
-def calcWages(start, end):
-    now = start
-    lastBreak = now
-    wage = 0
-    while(now < end):
-        # Take a break every eight hours
-        if(now-lastBreak>=eightHours):
-            now += onehour
-            lastBreak = now
-            continue
+ONE_MINUTE = datetime.timedelta(minutes=1)
+ONE_HOUR =   datetime.timedelta(hours=1)
 
-        # Determine the rate table for today
-        rateToday = rate["standard"]
-        if(now.weekday()==5 or now.weekday()==6):
-            rateToday = rate["weekend"]
-        isDay = (rateToday["dayStart"] <= now.time() < rateToday["dayEnd"])
-        if (isDay):
-            wage+= rateToday["dayRate"]
-        else:
-            wage+= rateToday["nightRate"]
-        now += oneminute
-    return wage
+def wages(start, end): 
+  #input params are datetime objects
+  now = start
+  lastBreak = now
+  wage = 0
+  # Increment wage minutely
+  while(now < end):
+    # Take a break every eight hours
+    if(now-lastBreak>=8*ONE_HOUR):
+        now += ONE_HOUR
+        lastBreak = now
+        continue
 
-def calcWagesISO(start,end):
-  return calcWages(datetime.datetime.fromisoformat(start),
-      datetime.datetime.fromisoformat(end))
+    # Determine the rate table for today
+    if(now.weekday() == 5 or now.weekday() == 6):
+      rateToday = rate["weekend"]
+    else:
+      rateToday = rate["standard"]
+    isDay = (rateToday["dayStart"] <= now.time() < rateToday["dayEnd"])
 
-wage = calcWagesISO(userIn["shift"]["start"],userIn["shift"]["end"])
-print(f"Given input: \n${userIn}")
+    if (isDay):
+      wage+= rateToday["dayRate"]
+    else:
+      wage+= rateToday["nightRate"]
+    now += ONE_MINUTE
+  return wage
+
+def wages_iso(start_str,end_str): 
+  #input params are ISO formatted strings
+  return wages(datetime.datetime.fromisoformat(start_str),
+               datetime.datetime.fromisoformat(end_str))
+
+wage = wages_iso(userIn["shift"]["start"], userIn["shift"]["end"])
+print(f"Given the suggested input,")
 print(f"Calculated wage is ${wage}\n")
-
-def test():
-  testCases = [
-      {
-      "start":    "2038-01-01T20:15:00",
-      "end":      "2038-01-02T08:15:00",
-      "expected": 19650
-      },
-      {
-      "start":    "2038-01-11T07:00:00",
-      "end":      "2038-01-17T19:00:00",
-      "expected": 202200
-      },
-      {
-      "start":    "2038-01-01T20:15:00",
-      "end":      "2038-01-02T04:16:00",
-      "expected": 13725
-      },
-      {
-      "start":    "2038-01-01T20:15:00",
-      "end":      "2038-01-02T05:16:00",
-      "expected": 13760
-      },
-  ]
-
-  for test in testCases:
-      print(f"Given input: \n{test}")
-      wage = calcWagesISO(test["start"],test["end"])
-      print(f"Output: {wage}")
-      assert wage == test["expected"]
-      print("Success!\n")
-
-test()
